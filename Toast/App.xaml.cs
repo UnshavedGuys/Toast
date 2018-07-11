@@ -14,38 +14,26 @@ using Windows.UI.Xaml.Data;
 using Windows.UI.Xaml.Input;
 using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Navigation;
+using Microsoft.Toolkit.Uwp.Notifications;
+using Microsoft.QueryStringDotNET;
+using Windows.UI.Notifications;
 
 namespace Toast
 {
-    /// <summary>
-    /// Provides application-specific behavior to supplement the default Application class.
-    /// </summary>
     sealed partial class App : Application
     {
-        /// <summary>
-        /// Initializes the singleton application object.  This is the first line of authored code
-        /// executed, and as such is the logical equivalent of main() or WinMain().
-        /// </summary>
         public App()
         {
             this.InitializeComponent();
             this.Suspending += OnSuspending;
         }
 
-        /// <summary>
-        /// Invoked when the application is launched normally by the end user.  Other entry points
-        /// will be used such as when the application is launched to open a specific file.
-        /// </summary>
-        /// <param name="e">Details about the launch request and process.</param>
         protected override void OnLaunched(LaunchActivatedEventArgs e)
         {
             Frame rootFrame = Window.Current.Content as Frame;
 
-            // Do not repeat app initialization when the Window already has content,
-            // just ensure that the window is active
             if (rootFrame == null)
             {
-                // Create a Frame to act as the navigation context and navigate to the first page
                 rootFrame = new Frame();
 
                 rootFrame.NavigationFailed += OnNavigationFailed;
@@ -55,7 +43,6 @@ namespace Toast
                     //TODO: Load state from previously suspended application
                 }
 
-                // Place the frame in the current Window
                 Window.Current.Content = rootFrame;
             }
 
@@ -63,38 +50,141 @@ namespace Toast
             {
                 if (rootFrame.Content == null)
                 {
-                    // When the navigation stack isn't restored navigate to the first page,
-                    // configuring the new page by passing required information as a navigation
-                    // parameter
                     rootFrame.Navigate(typeof(MainPage), e.Arguments);
                 }
-                // Ensure the current window is active
                 Window.Current.Activate();
             }
+            Toast();
         }
 
-        /// <summary>
-        /// Invoked when Navigation to a certain page fails
-        /// </summary>
-        /// <param name="sender">The Frame which failed navigation</param>
-        /// <param name="e">Details about the navigation failure</param>
         void OnNavigationFailed(object sender, NavigationFailedEventArgs e)
         {
             throw new Exception("Failed to load Page " + e.SourcePageType.FullName);
         }
 
-        /// <summary>
-        /// Invoked when application execution is being suspended.  Application state is saved
-        /// without knowing whether the application will be terminated or resumed with the contents
-        /// of memory still intact.
-        /// </summary>
-        /// <param name="sender">The source of the suspend request.</param>
-        /// <param name="e">Details about the suspend request.</param>
         private void OnSuspending(object sender, SuspendingEventArgs e)
         {
             var deferral = e.SuspendingOperation.GetDeferral();
             //TODO: Save application state and stop any background activity
             deferral.Complete();
         }
+
+        private void Toast()
+        {
+            // In a real app, these would be initialized with actual data
+            string title = "Victor sent you a picture";
+            string content = "Check this out!";
+            string image = "Content\\202.jpg";
+            string logo = "Content\\victor.jpg";
+
+            // Construct the visuals of the toast
+            ToastVisual visual = new ToastVisual()
+            {
+                BindingGeneric = new ToastBindingGeneric()
+                {
+                    Children =
+                    {
+                        new AdaptiveText()
+                        {
+                            Text = title
+                        },
+
+                        new AdaptiveText()
+                        {
+                            Text = content
+                        },
+
+                        new AdaptiveImage()
+                        {
+                            Source = image
+                        }
+                    },
+
+                    AppLogoOverride = new ToastGenericAppLogo()
+                    {
+                        Source = logo,
+                        HintCrop = ToastGenericAppLogoCrop.Circle
+                    }
+                }
+            };
+
+            // In a real app, these would be initialized with actual data
+            int conversationId = 384928;
+
+            // Construct the actions for the toast (inputs and buttons)
+            ToastActionsCustom actions = new ToastActionsCustom()
+            {
+                        Inputs =
+                            {
+                                new ToastTextBox("tbReply")
+                                {
+                                    PlaceholderContent = "Type a response"
+                                }
+                            },
+
+                        Buttons =
+            {
+                new ToastButton("Reply", new QueryString()
+                {
+                    { "action", "reply" },
+                    { "conversationId", conversationId.ToString() }
+
+                }.ToString())
+                    {
+                        ActivationType = ToastActivationType.Background,
+                        ImageUri = "Assets/Reply.png",
+ 
+                        // Reference the text box's ID in order to
+                        // place this button next to the text box
+                        TextBoxId = "tbReply"
+                    },
+
+                new ToastButton("Like", new QueryString()
+                {
+                    { "action", "like" },
+                    { "conversationId", conversationId.ToString() }
+
+                }.ToString())
+                {
+                    ActivationType = ToastActivationType.Background
+                },
+
+                new ToastButton("View", new QueryString()
+                {
+                    { "action", "viewImage" },
+                    { "imageUrl", image }
+
+                }.ToString())
+            }
+                    };
+            // Now we can construct the final toast content
+            ToastContent toastContent = new ToastContent()
+            {
+                Visual = visual,
+                Actions = actions,
+
+                // Arguments when the user taps body of toast
+                Launch = new QueryString()
+                {
+                    { "action", "viewConversation" },
+                    { "conversationId", conversationId.ToString() }
+
+                }.ToString()
+            };
+
+            // And create the toast notification
+            var toast = new ToastNotification(toastContent.GetXml());
+            toast.ExpirationTime = DateTime.Now.AddDays(2);
+            toast.Tag = "18365";
+            toast.Group = "wallPosts";
+            ToastNotificationManager.CreateToastNotifier().Show(toast);
+
+
+
+            //end of toast
+        }
+
+
+
     }
 }
